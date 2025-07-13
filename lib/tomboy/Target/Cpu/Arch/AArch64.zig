@@ -141,6 +141,7 @@ pub const Instruction = union(enum) {
     movw_imm: MoveWideImmediate,
     pc_rel_addr: PcRelativeAddress,
     load_store_reg: LoadStore.Register,
+    load_store_regpair: LoadStore.Pair.Register,
 
     const Base = @import("../Instruction.zig");
 
@@ -243,6 +244,30 @@ pub const Instruction = union(enum) {
                 std.meta.stringToEnum(Register, base.operands[1].reg) orelse return null,
                 LoadStore.Offset.init(base.operands[2].mem) catch return null,
             ),
+            .ldp => .ldp(
+                std.meta.stringToEnum(Register, base.operands[0].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[1].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[2].reg) orelse return null,
+                LoadStore.Pair.Offset.init(base.operands[3].mem) catch return null,
+            ),
+            .ldnp => .ldnp(
+                std.meta.stringToEnum(Register, base.operands[0].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[1].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[2].reg) orelse return null,
+                base.operands[3].imm_i9,
+            ),
+            .stp => .stp(
+                std.meta.stringToEnum(Register, base.operands[0].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[1].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[2].reg) orelse return null,
+                LoadStore.Pair.Offset.init(base.operands[3].mem) catch return null,
+            ),
+            .stnp => .stnp(
+                std.meta.stringToEnum(Register, base.operands[0].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[1].reg) orelse return null,
+                std.meta.stringToEnum(Register, base.operands[2].reg) orelse return null,
+                base.operands[3].imm_i9,
+            ),
         };
     }
 
@@ -302,6 +327,22 @@ pub const Instruction = union(enum) {
         return .{ .load_store_reg = .init(rt, rn, offset, .strb) };
     }
 
+    pub fn ldp(rt1: Register, rt2: Register, rn: Register, offset: LoadStore.Pair.Offset) Instruction {
+        return .{ .load_store_regpair = .init(rt1, rt2, rn, offset.offset, @intFromEnum(offset.encoding), true) };
+    }
+
+    pub fn ldnp(rt1: Register, rt2: Register, rn: Register, offset: i9) Instruction {
+        return .{ .load_store_regpair = .init(rt1, rt2, rn, offset, 0, true) };
+    }
+
+    pub fn stp(rt1: Register, rt2: Register, rn: Register, offset: LoadStore.Pair.Offset) Instruction {
+        return .{ .load_store_regpair = .init(rt1, rt2, rn, offset.offset, @intFromEnum(offset.encoding), false) };
+    }
+
+    pub fn stnp(rt1: Register, rt2: Register, rn: Register, offset: i9) Instruction {
+        return .{ .load_store_regpair = .init(rt1, rt2, rn, offset, 0, false) };
+    }
+
     pub const Mnemonic = enum {
         movn,
         movz,
@@ -317,6 +358,10 @@ pub const Instruction = union(enum) {
         str,
         strh,
         strb,
+        ldp,
+        ldnp,
+        stp,
+        stnp,
 
         pub fn info(self: Mnemonic) Base.Info {
             return .{
@@ -344,6 +389,18 @@ pub const Instruction = union(enum) {
                         .reg,
                         .reg,
                         .mem,
+                    },
+                    .ldp, .stp => &.{
+                        .reg,
+                        .reg,
+                        .reg,
+                        .mem,
+                    },
+                    .ldnp, .stnp => &.{
+                        .reg,
+                        .reg,
+                        .reg,
+                        .imm_i9,
                     },
                 },
                 .size = @bitSizeOf(u32),

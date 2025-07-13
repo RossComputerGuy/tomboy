@@ -2,6 +2,8 @@ const std = @import("std");
 
 pub const Operand = union(enum) {
     reg: []const u8,
+    imm_u9: u9,
+    imm_i9: i9,
     imm_u16: u16,
     imm_i16: i16,
     imm_u21: u21,

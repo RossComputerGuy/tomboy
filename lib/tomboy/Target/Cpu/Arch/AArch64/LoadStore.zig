@@ -5,6 +5,8 @@ const InstructionBase = @import("../../Instruction.zig");
 const AArch64 = @import("../AArch64.zig");
 const Self = @This();
 
+pub const Pair = @import("LoadStore/Pair.zig");
+
 pub const Variant = enum {
     str,
     strb,
@@ -273,7 +275,7 @@ pub const Register = packed struct {
     }
 
     pub fn get(self: Register) InstructionBase {
-        const base = AArch64.Register.decode(self.rn, 1, false) orelse unreachable;
+        const base = AArch64.Register.decode(self.rn, self.opc & (1 << 0), false) orelse unreachable;
         const offset = Offset.decode(self.op1, self.offset) orelse unreachable;
         return .{
             .name = switch (self.opc) {
@@ -299,7 +301,7 @@ pub const Register = packed struct {
             },
             .operands = &.{
                 .{ .reg = @tagName(base) },
-                .{ .reg = @tagName(AArch64.Register.decode(self.rt, 1, false) orelse unreachable) },
+                .{ .reg = @tagName(AArch64.Register.decode(self.rt, self.opc & (1 << 1), false) orelse unreachable) },
                 .{ .mem = offset.toMemoryOperand(base) },
             },
             .size = @bitSizeOf(u32),
